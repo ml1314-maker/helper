@@ -115,8 +115,6 @@ def analyze_interaction_frequency(messages):
         "用户平均提问长度": round(avg_user_len, 1),
         "助手平均回复长度": round(avg_assistant_len, 1),
         "问题类型统计": question_types,
-        "用户完整消息": user_msgs,
-        "助手完整消息": assistant_msgs
     }
 
 
@@ -170,10 +168,10 @@ def main():
             help="值越大回答越灵活多样，值越小回答越稳定保守"
         )
 
-        # 保存聊天记录
         st.divider()
 
-        if st.button("💾 保存聊天记录"):
+        # ---- 保存聊天记录（含统计） ----
+        if st.button("💾 保存聊天记录（含统计）"):
             if "messages" in st.session_state:
                 messages = st.session_state["messages"]
                 chat_messages = [msg for msg in messages if msg["role"] != "system"]
@@ -181,7 +179,7 @@ def main():
                 if len(chat_messages) == 0:
                     st.warning("⚠️ 暂无聊天记录可保存")
                 else:
-                    # 保存聊天记录
+                    # 1. 聊天记录 DataFrame
                     data = []
                     for msg in chat_messages:
                         data.append({
@@ -189,18 +187,37 @@ def main():
                             "角色": "我" if msg["role"] == "user" else "助手",
                             "内容": msg["content"]
                         })
-                    df = pd.DataFrame(data)
-                    filename = f"聊天记录_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-                    df.to_excel(filename, index=False)
+                    df_chat = pd.DataFrame(data)
 
-                    st.success(f"✅ 聊天记录已保存，点击下方按钮下载")
+                    # 2. 统计信息 DataFrame
+                    stats = analyze_interaction_frequency(chat_messages)
+                    stats_data = [
+                        {"指标": "总交互轮数", "数值": stats['总交互轮数']},
+                        {"指标": "用户提问次数", "数值": stats['用户提问次数']},
+                        {"指标": "助手回复次数", "数值": stats['助手回复次数']},
+                        {"指标": "用户平均提问长度（字）", "数值": stats['用户平均提问长度']},
+                        {"指标": "助手平均回复长度（字）", "数值": stats['助手平均回复长度']},
+                    ]
+                    # 添加问题类型统计
+                    for qtype, count in stats['问题类型统计'].items():
+                        stats_data.append({"指标": f"{qtype}类问题次数", "数值": count})
+                    df_stats = pd.DataFrame(stats_data)
 
-                    # 下载按钮（直接下载到桌面）
-                    with open(filename, "rb") as f:
+                    # 3. 合并到一个 Excel 文件（两个 Sheet）
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    merged_filename = f"聊天记录_统计_{timestamp}.xlsx"
+                    with pd.ExcelWriter(merged_filename, engine='openpyxl') as writer:
+                        df_chat.to_excel(writer, sheet_name="聊天记录", index=False)
+                        df_stats.to_excel(writer, sheet_name="统计报告", index=False)
+
+                    # 4. 提示并下载
+                    st.success(f"✅ 已生成包含聊天记录和统计的报告，点击下方按钮下载")
+
+                    with open(merged_filename, "rb") as f:
                         st.download_button(
-                            label="📥 点击下载到桌面",
+                            label="📥 一键下载到桌面",
                             data=f,
-                            file_name=filename,
+                            file_name=merged_filename,
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
             else:
