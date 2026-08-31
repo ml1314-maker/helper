@@ -9,6 +9,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
+import os
 
 
 # ================================================================
@@ -295,23 +296,21 @@ def main():
         recent = st.session_state["messages"][-10:] if len(st.session_state["messages"]) > 10 else st.session_state[
             "messages"]
         messages.extend(recent)
-
         qwen_apis = [
-            "sk-7ec09350c1e14780b3e41ea19515e4ae",
-            "sk-217e07579c8f44719f798f60ff946b49",
-            "sk-992df84c10e4436d93e4aff05cb90be8",
-            "sk-f3bf66260c1a43c284620c3b681ccb02"
+            os.getenv("QWEN_API_KEY_1"),
+            os.getenv("QWEN_API_KEY_2"),
+            os.getenv("QWEN_API_KEY_3"),
+            os.getenv("QWEN_API_KEY_4")
         ]
         qwen_models = ["qwen-turbo", "qwen-plus", "qwen-max", "qwq-plus"]
 
         response, error = get_api_response(messages, temperature, qwen_apis, qwen_models, "qwen")
         if not error:
             return response
-
         deepseek_apis = [
-            "sk-3257501889bb406b9ecbad63df9313c5",
-            "sk-63655d8c710b44dd9b14020f531616f6"
-        ]
+                    os.getenv("DEEPSEEK_API_KEY_1"),
+                    os.getenv("DEEPSEEK_API_KEY_2")
+                ]
         deepseek_models = ["deepseek-chat"]
 
         response, error = get_api_response(messages, temperature, deepseek_apis, deepseek_models, "deepseek")
