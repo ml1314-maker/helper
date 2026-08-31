@@ -90,13 +90,11 @@ def analyze_interaction_frequency(messages):
         elif msg["role"] == "assistant":
             assistant_msgs.append(msg["content"])
 
-    total_rounds = len(user_msgs)  # 用户每发一条算一轮
+    total_rounds = len(user_msgs)
 
-    # 计算平均消息长度（字符数）
     avg_user_len = sum(len(m) for m in user_msgs) / len(user_msgs) if user_msgs else 0
     avg_assistant_len = sum(len(m) for m in assistant_msgs) / len(assistant_msgs) if assistant_msgs else 0
 
-    # 统计用户提问中的关键词（初步判断问题类型）
     question_keywords = {
         "概念": ["什么是", "是什么", "什么意思", "解释", "概念"],
         "调试": ["报错", "错误", "不行", "不对", "bug", "调试", "运行不了"],
@@ -172,20 +170,18 @@ def main():
             help="值越大回答越灵活多样，值越小回答越稳定保守"
         )
 
-        # 保存聊天记录 + 统计交互频率
+        # 保存聊天记录
         st.divider()
 
-        if st.button("💾 保存聊天记录并统计"):
+        if st.button("💾 保存聊天记录"):
             if "messages" in st.session_state:
                 messages = st.session_state["messages"]
-
-                # 过滤掉系统消息
                 chat_messages = [msg for msg in messages if msg["role"] != "system"]
 
                 if len(chat_messages) == 0:
                     st.warning("⚠️ 暂无聊天记录可保存")
                 else:
-                    # ---- 1. 保存聊天记录 ----
+                    # 保存聊天记录
                     data = []
                     for msg in chat_messages:
                         data.append({
@@ -197,56 +193,16 @@ def main():
                     filename = f"聊天记录_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
                     df.to_excel(filename, index=False)
 
-                    # ---- 2. 统计交互频率 ----
-                    stats = analyze_interaction_frequency(chat_messages)
+                    st.success(f"✅ 聊天记录已保存，点击下方按钮下载")
 
-                    # 生成统计报告
-                    st.success(f"✅ 聊天记录已保存为 {filename}")
-
-                    # 在侧边栏显示统计结果
-                    st.divider()
-                    st.markdown("## 📊 交互频率统计")
-                    st.markdown(f"""
-                    | 指标 | 数值 |
-                    |------|------|
-                    | 💬 总交互轮数 | **{stats['总交互轮数']}** 轮 |
-                    | 🙋 你提问的次数 | **{stats['用户提问次数']}** 次 |
-                    | 🤖 助手回复次数 | **{stats['助手回复次数']}** 次 |
-                    | 📝 你的平均提问长度 | **{stats['用户平均提问长度']}** 字 |
-                    | 📝 助手的平均回复长度 | **{stats['助手平均回复长度']}** 字 |
-                    """)
-
-                    # 问题类型分布
-                    st.markdown("#### 📂 问题类型分布")
-                    qtypes = stats['问题类型统计']
-                    total_q = sum(qtypes.values()) if sum(qtypes.values()) > 0 else 1
-                    for qtype, count in qtypes.items():
-                        pct = round(count / total_q * 100, 1)
-                        bar = "█" * int(pct // 5) + "░" * (20 - int(pct // 5))
-                        st.markdown(f"`{qtype}` {bar} {count}次 ({pct}%)")
-
-                    # 保存统计信息到单独的文件
-                    stats_df = pd.DataFrame([
-                        {"指标": "总交互轮数", "数值": stats['总交互轮数']},
-                        {"指标": "用户提问次数", "数值": stats['用户提问次数']},
-                        {"指标": "助手回复次数", "数值": stats['助手回复次数']},
-                        {"指标": "用户平均提问长度（字）", "数值": stats['用户平均提问长度']},
-                        {"指标": "助手平均回复长度（字）", "数值": stats['助手平均回复长度']},
-                        {"指标": "概念类问题", "数值": stats['问题类型统计']["概念"]},
-                        {"指标": "调试类问题", "数值": stats['问题类型统计']["调试"]},
-                        {"指标": "思路类问题", "数值": stats['问题类型统计']["思路"]},
-                        {"指标": "代码类问题", "数值": stats['问题类型统计']["代码"]},
-                    ])
-                    stats_filename = f"交互统计_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-                    stats_df.to_excel(stats_filename, index=False)
-                    st.info(f"📊 统计报告已保存为 {stats_filename}")
-
-                    # ---- 3. 显示完整对话摘要（可折叠） ----
-                    with st.expander("📜 查看完整对话摘要"):
-                        for i, msg in enumerate(chat_messages):
-                            role_icon = "🙋" if msg["role"] == "user" else "🤖"
-                            st.markdown(
-                                f"**{role_icon} {msg['role']}**：{msg['content'][:100]}{'...' if len(msg['content']) > 100 else ''}")
+                    # 下载按钮（直接下载到桌面）
+                    with open(filename, "rb") as f:
+                        st.download_button(
+                            label="📥 点击下载到桌面",
+                            data=f,
+                            file_name=filename,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
             else:
                 st.warning("⚠️ 暂无聊天记录")
 
